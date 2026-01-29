@@ -1,178 +1,92 @@
-# LINE Bot システム
+# LINE Bot トラッカー (NestJS + Supabase + Vercel)
 
-NestJSを使用したLINE会話履歴の保存とタスク管理システムです。
+このプロジェクトは、LINE Messaging APIを活用した会話履歴の保存と、高度なタスク管理を自動化するシステムです。
 
-## 概要
+## 🌟 プロジェクトの目的
 
-このシステムは、LINE Messaging APIを通じてメッセージを受信し、会話内容の保存やタスク管理のサポートを行います。
+LINEでの何気ない会話から「やるべきこと」を自動で抽出し、日々のタスク管理を劇的に楽にすることを目的としています。
+Antigravity（AIアシスタント）とのペアプログラミングにより、迅速かつ安全に構築できるように設計されています。
 
-### 主な機能
+## ✨ 主な機能
 
-- ✅ LINE Webhookによるメッセージ受信
-- ✅ 会話履歴のデータベース保存
-- ✅ 会話からのタスク抽出
-- ✅ ユーザー管理
+- **💬 会話履歴の自動保存**: LINEで送受信されたメッセージをすべてSupabaseに記録。
+- **📝 AI/キーワードベースのタスク抽出**: 「TODO」「やること」「明日までに〜」といった表現から自動的にタスクを作成。
+- **📅 期限の自動解析**: メッセージ内の日付表現（今日、明日、12/25など）を解析し、期限として設定。
+- **📊 タスク統計 (`/stats`)**: 現在の進捗状況（完了率など）を即座に確認。
+- **🔔 日次サマリー通知**: 毎朝9時に未完了タスクの一覧をLINEでプッシュ通知。
 
-## 技術スタック
+## 🛠 技術スタック
 
-- **フレームワーク**: NestJS (TypeScript)
-- **データベース**: Supabase (PostgreSQL)
-- **ホスティング**: Vercel
+- **Framework**: NestJS (TypeScript)
+- **Database**: Supabase (PostgreSQL)
 - **ORM**: Prisma
-- **主要API**: LINE Messaging API
+- **Hosting**: Vercel
+- **API**: LINE Messaging API
+- **AI/Automation**: Antigravity (Advanced Agentic Coding)
 
-## アーキテクチャ
+## 🚀 セットアップ手順
 
-```mermaid
-graph LR
-    LINE[LINE Platform] <--> Vercel[Vercel (NestJS)]
-    Vercel --> Supabase[Supabase (PostgreSQL)]
-```
+誰でもAntigravityを使ってこのプロジェクトを再現・拡張できるように、以下の手順を整理しています。
 
-## セットアップ
+### 1. 前提条件の準備（外部サービス）
 
-### 前提条件
+以下のサービスのアカウントと設定が必要です：
 
-- Node.js 18以上
-- npm または yarn
-- LINE Developersアカウント
-- Supabaseアカウント
-- Vercelアカウント
+- **LINE Developers**: Messaging APIチャネルを作成。「チャネルシークレット」と「チャネルアクセストークン」を取得。
+- **Supabase**: プロジェクトを作成。`DATABASE_URL`（パスワード込み）を取得。
+- **ngrok**: ローカル開発時のWebhook公開に使用。
 
-### 1. リポジトリのクローン
+### 2. リポジトリのクローンとインストール
 
 ```bash
-git clone <repository-url>
+git clone <your-repository-url>
 cd linebot
-```
-
-### 2. 依存関係のインストール
-
-```bash
 npm install
 ```
 
 ### 3. 環境変数の設定
 
-`.env.example`を`.env`にコピーして、必要な情報を入力します。
+`.env.example` を `.env` にコピーし、取得したキーを設定します：
 
-```bash
-cp .env.example .env
+```env
+LINE_CHANNEL_ACCESS_TOKEN=取得したトークン
+LINE_CHANNEL_SECRET=取得したシークレット
+DATABASE_URL=postgresql://postgres:[パスワード]@db.[プロジェクトID].supabase.co:5432/postgres
 ```
 
-以下の情報を設定してください：
-
-- **LINE Messaging API**: [LINE Developers Console](https://developers.line.biz/console/)から取得
-- **Supabase**: [Supabase Dashboard](https://app.supabase.com/)から取得
-
-### 4. Prismaのセットアップ
+### 4. データベースの構築（Prisma）
 
 ```bash
-# Prismaクライアントの生成
-npx prisma generate
-
-# データベースマイグレーション
-# DATABASE_URLが必要です
-npx prisma migrate dev --name init
+# データベースにテーブルを作成
+npm run prisma:migrate
 ```
 
-### 5. ローカル開発サーバーの起動
+### 5. アプリケーションの起動
 
 ```bash
+# 開発サーバーの起動
 npm run start:dev
 ```
 
-### 6. ngrokでWebhookを公開（ローカル開発時）
+### 6. Webhookの疎通確認
 
-```bash
-# ngrokでポート3000を公開
-ngrok http 3000
-```
+1. `ngrok http 3000` を実行。
+2. 発行された `https://...` URLを、LINE Developersの「Webhook URL」に登録（末尾に `/webhook` を追加）。
+3. LINEでボットに「TODO: テスト」と送って反応を確認。
 
-表示されたHTTPS URLをLINE Developers ConsoleのWebhook URLに設定してください（例: `https://xxxx.ngrok-free.app/webhook`）。
+## 🤖 Antigravityでの開発ガイド
 
-## デプロイ
+このプロジェクトはAntigravityとの連携を前提としています。以下のファイルを AI が読み込むことで、文脈を理解したスムーズな開発が可能です。
 
-### Vercelへのデプロイ
+- **[ANTIGRAVITY.md](.agent/ANTIGRAVITY.md)**: AI向けのプロジェクト方針、コーディング規約、セキュリティルール。
+- **[REQUIREMENTS.md](REQUIREMENTS.md)**: システム全体の詳細な仕様書。
+- **[walkthrough.md](walkthrough.md)**: これまでの実装履歴と現在のステータス。
 
-1. GitHubリポジトリと連携
-2. Vercelで環境変数を設定
-3. デプロイ実行
+## 🛡 セキュリティ
 
-```bash
-# Vercel CLIを使用する場合
-npm i -g vercel
-vercel --prod
-```
+- **.env**: 機密情報は絶対にコミットされません（`.gitignore` で除外済み）。
+- **Git Hooks**: `pre-commit` フックにより、誤って機密情報を含めたコミットをしようとすると警告・停止します。詳細は [SECURITY.md](SECURITY.md) を参照してください。
 
-### 環境変数の設定（Vercel）
-
-Vercelダッシュボードで以下の環境変数を設定してください：
-
-- `LINE_CHANNEL_ACCESS_TOKEN`
-- `LINE_CHANNEL_SECRET`
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `DATABASE_URL`
-
-## プロジェクト構造
-
-```text
-linebot/
-├── .agent/                    # AI設定ファイル
-├── prisma/                    # Prismaスキーマ
-│   └── schema.prisma
-├── src/
-│   ├── main.ts               # エントリーポイント
-│   ├── app.module.ts         # ルートモジュール
-│   ├── config/               # 設定ファイル
-│   ├── common/               # 共通モジュール
-│   ├── database/             # データベース接続
-│   ├── line/                 # LINE連携
-│   ├── task/                 # タスク管理
-│   └── scheduler/            # スケジューラー
-├── test/                     # テストファイル
-├── .env.example              # 環境変数サンプル
-├── .gitignore
-├── package.json
-├── tsconfig.json
-├── vercel.json               # Vercel設定
-└── README.md
-```
-
-## 使い方
-
-### LINE Botコマンド
-
-- `/tasks` - タスク一覧を表示
-- `/settings` - 設定を表示
-- `/help` - ヘルプメッセージを表示
-
-## テスト
-
-```bash
-# ユニットテスト
-npm run test
-
-# E2Eテスト
-npm run test:e2e
-```
-
-## ドキュメント
-
-- [要件仕様書](./REQUIREMENTS.md)
-- [実装計画](./implementation_plan.md)
-- [開発ガイドライン](./.agent/ANTIGRAVITY.md)
-- [セキュリティガイドライン](./SECURITY.md)
-
-## ライセンス
+## 📄 ライセンス
 
 MIT
-
-## 参考リンク
-
-- [NestJS Documentation](https://docs.nestjs.com/)
-- [LINE Messaging API](https://developers.line.biz/ja/docs/messaging-api/)
-- [Supabase Documentation](https://supabase.com/docs)
-- [Vercel Documentation](https://vercel.com/docs)
