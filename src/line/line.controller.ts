@@ -27,6 +27,10 @@ export class LineController {
     @Body() body: any,
     @Headers('x-line-signature') signature: string,
   ) {
+    console.log('--- Webhook POST 受信 ---');
+    console.log('Body:', JSON.stringify(body));
+    console.log('Signature:', signature);
+
     // 署名検証
     const isValid = this.validateSignature(body, signature);
     if (!isValid) {
