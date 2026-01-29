@@ -3,7 +3,6 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from './database/database.module';
 import { LineModule } from './line/line.module';
-import { TaskModule } from './task/task.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 
 @Module({
@@ -19,8 +18,6 @@ import { SchedulerModule } from './scheduler/scheduler.module';
     DatabaseModule,
     // LINEモジュール
     LineModule,
-    // タスクモジュール
-    TaskModule,
     // スケジューラーモジュール（ビジネスロジック）
     SchedulerModule,
   ],

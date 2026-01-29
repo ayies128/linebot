@@ -13,50 +13,33 @@ export class SchedulerService {
   ) { }
 
   /**
-   * 毎日朝9時に未完了タスクのサマリーを送信する
+   * 毎日朝9時に活動開始メッセージを送信する（現在はタスクがないためメッセージのみ）
    */
   @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  async handleDailyTaskSummary() {
-    this.logger.log('日次タスクサマリーの送信を開始します...');
+  async handleDailyGreeting() {
+    this.logger.log('日次挨拶の送信を開始します...');
 
     const users = await this.prisma.user.findMany();
 
     for (const user of users) {
-      const pendingTasks = await this.prisma.task.findMany({
-        where: {
-          userId: user.id,
-          status: 'pending',
-        },
-        orderBy: {
-          priority: 'desc',
-        },
-        take: 5,
-      });
+      const message = {
+        type: 'text',
+        text: `【おはようございます！☀️】\n今日も一日頑張りましょう！`,
+      };
 
-      if (pendingTasks.length > 0) {
-        const taskList = pendingTasks
-          .map((task, index) => `${index + 1}. ${task.title}`)
-          .join('\n');
-
-        const message = {
-          type: 'text',
-          text: `【おはようございます！☀️】\n今日の未完了タスクはこちらです：\n\n${taskList}\n\n今日も一日頑張りましょう！`,
-        };
-
-        try {
-          await this.lineService.pushMessage(user.lineUserId, message as any);
-        } catch (error) {
-          this.logger.error(`ユーザー ${user.displayName} への送信に失敗しました`, error);
-        }
+      try {
+        await this.lineService.pushMessage(user.lineUserId, message as any);
+      } catch (error) {
+        this.logger.error(`ユーザー ${user.displayName} への送信に失敗しました`, error);
       }
     }
   }
 
   /**
-   * 15分ごとにリマインダーをチェックする（将来的な拡張用）
+   * 30分ごとの定期チェック（将来的な拡張用）
    */
   @Cron(CronExpression.EVERY_30_MINUTES)
-  async checkReminders() {
-    // 期限が近いタスクなどの通知ロジックをここに実装
+  async checkStatus() {
+    // サーバーの死活監視や定期処理をここに実装可能
   }
 }

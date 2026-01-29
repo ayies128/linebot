@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, ClientConfig, TextMessage, FlexMessage } from '@line/bot-sdk';
 import { PrismaService } from '../database/prisma.service';
-import { TaskService } from '../task/task.service';
 
 @Injectable()
 export class LineService {
@@ -11,7 +10,6 @@ export class LineService {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
-    private taskService: TaskService,
   ) {
     const config: ClientConfig = {
       channelAccessToken: this.configService.get<string>('LINE_CHANNEL_ACCESS_TOKEN') || '',
@@ -113,11 +111,8 @@ export class LineService {
       },
     });
 
-    // 4. メッセージタイプに応じた処理
+    // 4. テキストメッセージの追加処理（コマンドなどが必要な場合）
     if (message.type === 'text' && user) {
-      // タスク抽出を試みる
-      await this.taskService.extractAndCreateTask(user.id, message.text);
-      // コマンド等のテキスト処理
       await this.handleTextMessage(replyToken, message.text, user, room);
     }
   }
@@ -126,99 +121,13 @@ export class LineService {
    * テキストメッセージを処理
    */
   private async handleTextMessage(replyToken: string, text: string, user: any, room: any) {
-    let replyMessage: TextMessage | null = null;
-
-    // コマンド処理
-    if (text.startsWith('/')) {
-      replyMessage = await this.handleCommand(text, user);
-    }
-
-    // 返信がある場合のみ送信
-    if (replyMessage) {
-      try {
-        await this.client.replyMessage(replyToken, replyMessage);
-
-        // 送信したメッセージも保存
-        await this.prisma.message.create({
-          data: {
-            roomId: room.id,
-            userId: null, // システムからのメッセージとして保存
-            messageType: 'text',
-            textContent: replyMessage.text,
-            rawContent: JSON.stringify(replyMessage),
-            isFromUser: false,
-          },
-        });
-      } catch (error) {
-        console.error('メッセージ送信エラー:', error);
-      }
-    }
-  }
-
-  /**
-   * コマンドを処理
-   */
-  private async handleCommand(command: string, user: any): Promise<TextMessage> {
-    const cmd = command.toLowerCase().split(' ')[0];
-
-    switch (cmd) {
-      case '/help':
-        return {
-          type: 'text',
-          text: `【利用可能なコマンド】\n\n` +
-            `/help - このヘルプを表示\n` +
-            `/tasks - タスク一覧を表示\n` +
-            `/stats - タスク統計を表示\n` +
-            `/settings - 設定メニューを表示`,
-        };
-
-      case '/stats':
-        const stats = await this.taskService.getTaskStats(user.id);
-        return {
-          type: 'text',
-          text: `【タスク統計】\n\n` +
-            `全タスク: ${stats.total}\n` +
-            `完了済み: ${stats.completed}\n` +
-            `未完了: ${stats.pending}\n` +
-            `完了率: ${stats.completionRate.toFixed(1)}%`,
-        };
-
-      case '/tasks':
-        const tasks = await this.prisma.task.findMany({
-          where: { userId: user.id, status: { not: 'completed' } },
-          orderBy: { createdAt: 'desc' },
-          take: 10,
-        });
-
-        if (tasks.length === 0) {
-          return {
-            type: 'text',
-            text: 'タスクはありません',
-          };
-        }
-
-        const taskList = tasks.map((task, index) =>
-          `${index + 1}. ${task.title}${task.dueDate ? ` (期限: ${task.dueDate.toLocaleDateString('ja-JP')})` : ''}`
-        ).join('\n');
-
-        return {
-          type: 'text',
-          text: `【タスク一覧】\n\n${taskList}`,
-        };
-
-      case '/settings':
-        return {
-          type: 'text',
-          text: `【現在の設定】\n\n` +
-            `タイムゾーン: ${user.timezone}\n` +
-            `設定変更機能は実装中です`,
-        };
-
-      default:
-        return {
-          type: 'text',
-          text: `不明なコマンドです: ${cmd}\n/help でコマンド一覧を確認できます`,
-        };
+    // 現在は自動応答なし。コマンドが必要な場合はここに追加。
+    if (text === '/help') {
+      const helpMessage: TextMessage = {
+        type: 'text',
+        text: 'このBotはLINEの会話履歴を自動でデータベースに保存しています。特別なコマンドはありません。',
+      };
+      await this.client.replyMessage(replyToken, helpMessage);
     }
   }
 
@@ -254,12 +163,10 @@ export class LineService {
         },
       });
 
-      // ウェルカムメッセージを送信
+      // ウェルカムメッセージ
       const welcomeMessage: TextMessage = {
         type: 'text',
-        text: `${profile.displayName}さん、友だち追加ありがとうございます！\n\n` +
-          `このBotは、LINEでの会話履歴を保存し、タスク管理をサポートします。\n\n` +
-          `/help でコマンド一覧を確認できます。`,
+        text: `${profile.displayName}さん、友だち追加ありがとうございます！\n会話履歴の保存を開始します。`,
       };
 
       await this.client.replyMessage(event.replyToken, welcomeMessage);
@@ -275,8 +182,6 @@ export class LineService {
           isFromUser: false,
         },
       });
-
-      console.log('新規フォロー:', profile.displayName);
     } catch (error) {
       console.error('フォローイベント処理エラー:', error);
     }
@@ -298,8 +203,6 @@ export class LineService {
       await this.client.pushMessage(userId, message);
       console.log('プッシュメッセージを送信しました:', userId);
 
-      // 送信メッセージをデータベースに保存
-      // userId（宛先）をRoomIDとして使用
       const room = await this.prisma.room.findUnique({
         where: { lineRoomId: userId },
       });
@@ -308,7 +211,7 @@ export class LineService {
         await this.prisma.message.create({
           data: {
             roomId: room.id,
-            userId: null, // システムからの送信
+            userId: null,
             messageType: message.type,
             textContent: (message as any).text || null,
             rawContent: JSON.stringify(message),

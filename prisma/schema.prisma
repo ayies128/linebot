@@ -1,5 +1,6 @@
 // Prismaスキーマファイル
 // データベース: Supabase (PostgreSQL)
+// メッセージ記録に特化した構成
 
 generator client {
   provider = "prisma-client-js"
@@ -21,7 +22,6 @@ model User {
   updatedAt         DateTime  @updatedAt
   
   messages          Message[]
-  tasks             Task[]
 }
 
 // ルーム（トークルーム、グループ、個人チャットの場）
@@ -42,7 +42,7 @@ model Message {
   roomId        String
   userId        String?  // システムからのメッセージの場合はnull
   messageType   String   // text, image, sticker, etc.
-  textContent   String?  // テキストのみを抽出して保存 (例: "これか")
+  textContent   String?  // テキストのみを抽出して保存
   rawContent    String?  // JSON全体の保存
   timestamp     DateTime @default(now())
   isFromUser    Boolean  @default(true)
@@ -51,23 +51,4 @@ model Message {
   user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([roomId, userId, timestamp])
-}
-
-// タスク
-model Task {
-  id          String    @id @default(uuid())
-  userId      String
-  title       String
-  description String?
-  dueDate     DateTime?
-  priority    Int       @default(0) // 0: low, 1: medium, 2: high
-  status      String    @default("pending") // pending, in_progress, completed
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  completedAt DateTime?
-  
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId, status])
-  @@index([dueDate])
 }
