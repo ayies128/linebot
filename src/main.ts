@@ -8,26 +8,33 @@ import express from 'express';
 let cachedApp: INestApplication;
 
 async function bootstrap(): Promise<any> {
-  if (!cachedApp) {
-    const server = express();
-    const app = await NestFactory.create(
-      AppModule,
-      new ExpressAdapter(server),
-    );
+  try {
+    if (!cachedApp) {
+      console.log('--- アプリケーションのブートストラップを開始します ---');
+      const server = express();
+      const app = await NestFactory.create(
+        AppModule,
+        new ExpressAdapter(server),
+      );
 
-    // グローバルバリデーションパイプ
-    app.useGlobalPipes(new ValidationPipe({
-      whitelist: true,
-      transform: true,
-    }));
+      // グローバルバリデーションパイプ
+      app.useGlobalPipes(new ValidationPipe({
+        whitelist: true,
+        transform: true,
+      }));
 
-    // CORS設定
-    app.enableCors();
+      // CORS設定
+      app.enableCors();
 
-    await app.init();
-    cachedApp = app;
+      await app.init();
+      cachedApp = app;
+      console.log('--- アプリケーションの初期化が完了しました ---');
+    }
+    return cachedApp.getHttpAdapter().getInstance();
+  } catch (error) {
+    console.error('❌ ブートストラップ中にエラーが発生しました:', error);
+    throw error;
   }
-  return cachedApp.getHttpAdapter().getInstance();
 }
 
 // ローカル実行用
