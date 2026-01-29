@@ -1,0 +1,87 @@
+// Prismaスキーマファイル
+// データベース: Supabase (PostgreSQL)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ユーザー情報
+model User {
+  id                String    @id @default(uuid())
+  lineUserId        String    @unique
+  displayName       String?
+  pictureUrl        String?
+  googleRefreshToken String?  // Google OAuth refresh token
+  googleAccessToken  String?
+  timezone          String    @default("Asia/Tokyo")
+  reminderMinutes   Int       @default(30)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  messages          Message[]
+  events            Event[]
+  tasks             Task[]
+  
+  @@index([lineUserId])
+}
+
+// LINE会話履歴
+model Message {
+  id          String   @id @default(uuid())
+  userId      String
+  messageType String   // text, image, sticker, location, etc.
+  content     String?  // メッセージ内容（JSON形式で保存）
+  timestamp   DateTime @default(now())
+  replyToken  String?
+  isFromUser  Boolean  @default(true)
+  
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, timestamp])
+}
+
+// カレンダーイベント
+model Event {
+  id              String    @id @default(uuid())
+  userId          String
+  googleEventId   String?   @unique
+  title           String
+  description     String?
+  startTime       DateTime
+  endTime         DateTime
+  location        String?
+  isAllDay        Boolean   @default(false)
+  reminderSent    Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, startTime])
+  @@index([googleEventId])
+}
+
+// タスク
+model Task {
+  id          String    @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  dueDate     DateTime?
+  priority    Int       @default(0) // 0: low, 1: medium, 2: high
+  status      String    @default("pending") // pending, in_progress, completed
+  eventId     String?   // 関連するカレンダーイベント
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, status])
+  @@index([dueDate])
+}
