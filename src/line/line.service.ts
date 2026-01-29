@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client, ClientConfig, TextMessage, FlexMessage } from '@line/bot-sdk';
 import { PrismaService } from '../database/prisma.service';
+import { TaskService } from '../task/task.service';
 
 @Injectable()
 export class LineService {
@@ -10,6 +11,7 @@ export class LineService {
   constructor(
     private configService: ConfigService,
     private prisma: PrismaService,
+    private taskService: TaskService,
   ) {
     const config: ClientConfig = {
       channelAccessToken: this.configService.get<string>('LINE_CHANNEL_ACCESS_TOKEN') || '',
@@ -82,6 +84,9 @@ export class LineService {
 
     // メッセージタイプに応じた処理
     if (message.type === 'text') {
+      // タスク抽出を試みる
+      await this.taskService.extractAndCreateTask(user.id, message.text);
+
       await this.handleTextMessage(replyToken, message.text, user);
     }
   }
