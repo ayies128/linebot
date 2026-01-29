@@ -39,4 +39,4 @@ coverage/
 .vercel
 
 # Prisma
-prisma/migrations/
+# prisma/migrations/ は本番環境（Vercel）でのデータベース同期に必要なためコミット対象に含めます
