@@ -10,36 +10,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ユーザー情報
+// ユーザー（個人のLINEユーザー）
 model User {
   id                String    @id @default(uuid())
   lineUserId        String    @unique
   displayName       String?
   pictureUrl        String?
   timezone          String    @default("Asia/Tokyo")
-  reminderMinutes   Int       @default(30)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   
   messages          Message[]
   tasks             Task[]
-  
-  @@index([lineUserId])
 }
 
-// LINE会話履歴
+// ルーム（トークルーム、グループ、個人チャットの場）
+model Room {
+  id                String    @id @default(uuid())
+  lineRoomId        String    @unique // userId, groupId, roomIdのいずれか
+  type              String    // "user", "group", "room"
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  messages          Message[]
+}
+
+// メッセージ（ルーム内でのユーザーの発言）
 model Message {
-  id          String   @id @default(uuid())
-  userId      String
-  messageType String   // text, image, sticker, location, etc.
-  content     String?  // メッセージ内容（JSON形式で保存）
-  timestamp   DateTime @default(now())
-  replyToken  String?
-  isFromUser  Boolean  @default(true)
+  id            String   @id @default(uuid())
+  lineMessageId String?  @unique
+  roomId        String
+  userId        String?  // システムからのメッセージの場合はnull
+  messageType   String   // text, image, sticker, etc.
+  textContent   String?  // テキストのみを抽出して保存 (例: "これか")
+  rawContent    String?  // JSON全体の保存
+  timestamp     DateTime @default(now())
+  isFromUser    Boolean  @default(true)
   
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room          Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  @@index([userId, timestamp])
+  @@index([roomId, userId, timestamp])
 }
 
 // タスク
@@ -60,4 +71,3 @@ model Task {
   @@index([userId, status])
   @@index([dueDate])
 }
-

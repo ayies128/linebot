@@ -46,108 +46,112 @@ export class LineService {
    */
   private async handleMessageEvent(event: any) {
     const { replyToken, source, message } = event;
-    // 優先順位: userId > groupId > roomId
-    const lineId = source.userId || source.groupId || source.roomId;
 
-    if (!lineId) {
+    // ルームID（送信元）の特定
+    const roomLineId = source.groupId || source.roomId || source.userId;
+    // ユーザーID（発信者）の特定
+    const userLineId = source.userId;
+
+    if (!roomLineId) {
       console.error('送信元IDが不明です:', event);
       return;
     }
 
-    // ユーザーを取得または作成
-    let user = await this.prisma.user.findUnique({
-      where: { lineUserId: lineId },
+    // 1. ルームを取得または作成
+    let room = await this.prisma.room.findUnique({
+      where: { lineRoomId: roomLineId },
     });
 
-    if (!user) {
-      // 新規ユーザーの場合、プロフィール情報の取得を試みる
-      let displayName = 'Unknown User';
-      let pictureUrl = null;
+    if (!room) {
+      room = await this.prisma.room.create({
+        data: {
+          lineRoomId: roomLineId,
+          type: source.groupId ? 'group' : source.roomId ? 'room' : 'user',
+        },
+      });
+    }
 
-      try {
-        // userIdがある場合のみプロフィール取得可能
-        if (source.userId) {
-          const profile = await this.client.getProfile(source.userId);
+    // 2. ユーザーを取得または作成
+    let user = null;
+    if (userLineId) {
+      user = await this.prisma.user.findUnique({
+        where: { lineUserId: userLineId },
+      });
+
+      if (!user) {
+        let displayName = 'Unknown User';
+        let pictureUrl = null;
+
+        try {
+          const profile = await this.client.getProfile(userLineId);
           displayName = profile.displayName;
           pictureUrl = profile.pictureUrl;
-        } else if (source.groupId) {
-          displayName = `Group (${source.groupId.substring(0, 8)})`;
-        } else if (source.roomId) {
-          displayName = `Room (${source.roomId.substring(0, 8)})`;
+        } catch (error) {
+          console.warn('プロフィール取得に失敗しました:', error.message);
         }
 
         user = await this.prisma.user.create({
           data: {
-            lineUserId: lineId,
+            lineUserId: userLineId,
             displayName: displayName,
             pictureUrl: pictureUrl,
-          },
-        });
-        console.log('新規ユーザー/グループを登録しました:', user.displayName);
-      } catch (error) {
-        console.error('ユーザー登録エラー（フォールバック実行）:', error);
-        // プロフィール取得に失敗してもIDだけで登録を強行
-        user = await this.prisma.user.create({
-          data: {
-            lineUserId: lineId,
-            displayName: displayName,
           },
         });
       }
     }
 
-    // メッセージを保存
+    // 3. メッセージを保存
     await this.prisma.message.create({
       data: {
-        userId: user.id,
+        lineMessageId: message.id,
+        roomId: room.id,
+        userId: user ? user.id : null,
         messageType: message.type,
-        content: JSON.stringify(message),
-        replyToken: replyToken,
+        textContent: message.text || null,
+        rawContent: JSON.stringify(message),
         isFromUser: true,
       },
     });
 
-    // メッセージタイプに応じた処理
-    if (message.type === 'text') {
+    // 4. メッセージタイプに応じた処理
+    if (message.type === 'text' && user) {
       // タスク抽出を試みる
       await this.taskService.extractAndCreateTask(user.id, message.text);
-
-      await this.handleTextMessage(replyToken, message.text, user);
+      // コマンド等のテキスト処理
+      await this.handleTextMessage(replyToken, message.text, user, room);
     }
   }
 
   /**
    * テキストメッセージを処理
    */
-  private async handleTextMessage(replyToken: string, text: string, user: any) {
-    let replyMessage: TextMessage;
+  private async handleTextMessage(replyToken: string, text: string, user: any, room: any) {
+    let replyMessage: TextMessage | null = null;
 
     // コマンド処理
     if (text.startsWith('/')) {
       replyMessage = await this.handleCommand(text, user);
-    } else {
-      // 通常のメッセージ応答
-      replyMessage = {
-        type: 'text',
-        text: `メッセージを受信しました: ${text}`,
-      };
     }
 
-    // 返信
-    try {
-      await this.client.replyMessage(replyToken, replyMessage);
+    // 返信がある場合のみ送信
+    if (replyMessage) {
+      try {
+        await this.client.replyMessage(replyToken, replyMessage);
 
-      // 送信したメッセージも保存
-      await this.prisma.message.create({
-        data: {
-          userId: user.id,
-          messageType: 'text',
-          content: JSON.stringify(replyMessage),
-          isFromUser: false,
-        },
-      });
-    } catch (error) {
-      console.error('メッセージ送信エラー:', error);
+        // 送信したメッセージも保存
+        await this.prisma.message.create({
+          data: {
+            roomId: room.id,
+            userId: null, // システムからのメッセージとして保存
+            messageType: 'text',
+            textContent: replyMessage.text,
+            rawContent: JSON.stringify(replyMessage),
+            isFromUser: false,
+          },
+        });
+      } catch (error) {
+        console.error('メッセージ送信エラー:', error);
+      }
     }
   }
 
@@ -180,7 +184,6 @@ export class LineService {
         };
 
       case '/tasks':
-        // データベースからタスクを取得
         const tasks = await this.prisma.task.findMany({
           where: { userId: user.id, status: { not: 'completed' } },
           orderBy: { createdAt: 'desc' },
@@ -228,12 +231,26 @@ export class LineService {
     try {
       const profile = await this.client.getProfile(userId);
 
-      // ユーザーを登録
-      const user = await this.prisma.user.create({
-        data: {
+      // ユーザーと個人用ルームを登録
+      const user = await this.prisma.user.upsert({
+        where: { lineUserId: userId },
+        update: {
+          displayName: profile.displayName,
+          pictureUrl: profile.pictureUrl,
+        },
+        create: {
           lineUserId: userId,
           displayName: profile.displayName,
           pictureUrl: profile.pictureUrl,
+        },
+      });
+
+      const room = await this.prisma.room.upsert({
+        where: { lineRoomId: userId },
+        update: {},
+        create: {
+          lineRoomId: userId,
+          type: 'user',
         },
       });
 
@@ -245,8 +262,20 @@ export class LineService {
           `/help でコマンド一覧を確認できます。`,
       };
 
-
       await this.client.replyMessage(event.replyToken, welcomeMessage);
+
+      // 送信メッセージ保存
+      await this.prisma.message.create({
+        data: {
+          roomId: room.id,
+          userId: null,
+          messageType: 'text',
+          textContent: welcomeMessage.text,
+          rawContent: JSON.stringify(welcomeMessage),
+          isFromUser: false,
+        },
+      });
+
       console.log('新規フォロー:', profile.displayName);
     } catch (error) {
       console.error('フォローイベント処理エラー:', error);
@@ -258,8 +287,6 @@ export class LineService {
    */
   private async handleUnfollowEvent(event: any) {
     const userId = event.source.userId;
-
-    // ユーザー情報は削除せず、ログのみ記録
     console.log('ユーザーがアンフォローしました:', userId);
   }
 
@@ -270,6 +297,25 @@ export class LineService {
     try {
       await this.client.pushMessage(userId, message);
       console.log('プッシュメッセージを送信しました:', userId);
+
+      // 送信メッセージをデータベースに保存
+      // userId（宛先）をRoomIDとして使用
+      const room = await this.prisma.room.findUnique({
+        where: { lineRoomId: userId },
+      });
+
+      if (room) {
+        await this.prisma.message.create({
+          data: {
+            roomId: room.id,
+            userId: null, // システムからの送信
+            messageType: message.type,
+            textContent: (message as any).text || null,
+            rawContent: JSON.stringify(message),
+            isFromUser: false,
+          },
+        });
+      }
     } catch (error) {
       console.error('プッシュメッセージ送信エラー:', error);
       throw error;
