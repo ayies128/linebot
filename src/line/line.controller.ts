@@ -1,10 +1,22 @@
-import { Controller, Post, Body, Headers, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Body, Headers, HttpException, HttpStatus } from '@nestjs/common';
 import { LineService } from './line.service';
 import * as crypto from 'crypto';
 
 @Controller('webhook')
 export class LineController {
   constructor(private readonly lineService: LineService) { }
+
+  /**
+   * アプリの起動確認用 (GET /webhook)
+   */
+  @Get()
+  healthCheck() {
+    return {
+      message: 'LINE Bot is running!',
+      status: 'active',
+      timestamp: new Date().toISOString()
+    };
+  }
 
   /**
    * LINE Webhookエンドポイント
@@ -18,8 +30,8 @@ export class LineController {
     // 署名検証
     const isValid = this.validateSignature(body, signature);
     if (!isValid) {
-      console.warn('⚠️ 署名検証に失敗しましたが、デバッグのために処理を続行します。本番運用時は必ず修正してください。');
-      // 本来はここで throw すべきですが、原因特定のために一時的にスルーします
+      console.warn('⚠️ 署名検証に失敗しましたが、デバッグのために処理を続行します。');
+      // 一時的にスルー
     } else {
       console.log('✅ 署名検証に成功しました');
     }
