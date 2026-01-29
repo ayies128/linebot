@@ -76,25 +76,37 @@ export class LineService {
         where: { lineUserId: userLineId },
       });
 
-      if (!user) {
-        let displayName = 'Unknown User';
-        let pictureUrl = null;
+      // 新規ユーザー、または名前が未取得の場合、プロフィール取得を試みる
+      if (!user || user.displayName === 'Unknown User') {
+        const profile = await this.fetchUserProfile(source, userLineId);
 
-        try {
-          const profile = await this.client.getProfile(userLineId);
-          displayName = profile.displayName;
-          pictureUrl = profile.pictureUrl;
-        } catch (error) {
-          console.warn('プロフィール取得に失敗しました:', error.message);
+        if (profile) {
+          if (!user) {
+            user = await this.prisma.user.create({
+              data: {
+                lineUserId: userLineId,
+                displayName: profile.displayName,
+                pictureUrl: profile.pictureUrl,
+              },
+            });
+          } else {
+            user = await this.prisma.user.update({
+              where: { id: user.id },
+              data: {
+                displayName: profile.displayName,
+                pictureUrl: profile.pictureUrl,
+              },
+            });
+          }
+        } else if (!user) {
+          // プロフィール取得に失敗したが新規ユーザーの場合は、初期値で作成
+          user = await this.prisma.user.create({
+            data: {
+              lineUserId: userLineId,
+              displayName: 'Unknown User',
+            },
+          });
         }
-
-        user = await this.prisma.user.create({
-          data: {
-            lineUserId: userLineId,
-            displayName: displayName,
-            pictureUrl: pictureUrl,
-          },
-        });
       }
     }
 
@@ -193,6 +205,24 @@ export class LineService {
   private async handleUnfollowEvent(event: any) {
     const userId = event.source.userId;
     console.log('ユーザーがアンフォローしました:', userId);
+  }
+
+  /**
+   * ユーザープロフィールを取得
+   */
+  private async fetchUserProfile(source: any, userId: string) {
+    try {
+      if (source.type === 'group') {
+        return await this.client.getGroupMemberProfile(source.groupId, userId);
+      } else if (source.type === 'room') {
+        return await this.client.getRoomMemberProfile(source.roomId, userId);
+      } else {
+        return await this.client.getProfile(userId);
+      }
+    } catch (error) {
+      console.warn(`プロフィール取得失敗 (${source.type}): ${error.message}`);
+      return null;
+    }
   }
 
   /**
