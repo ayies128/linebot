@@ -55,7 +55,7 @@ export class SchedulerService {
   /**
    * 15分ごとにリマインダーをチェックする（将来的な拡張用）
    */
-  @Cron(CronExpression.EVERY_15_MINUTES)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async checkReminders() {
     // 期限が近いタスクなどの通知ロジックをここに実装
   }

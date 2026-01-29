@@ -26,22 +26,44 @@ export class TaskService {
       }
     }
 
-    // "〜する" や "〜した" などから抽出する高度なロジックは後のフェーズで検討
-    // 現時点ではキーワードにマッチした場合のみタスク化
+    // キーワードにマッチした場合のみタスク化
     if (isTask && taskTitle) {
+      // 期限の抽出を試みる
+      const dueDate = this.parseDueDate(taskTitle);
+
+      // 期限表現（今日|明日|xx/xx）をタイトルから除去して整形
+      const cleanedTitle = taskTitle.replace(/(今日|明日|(\d{1,2}[\/\-]\d{1,2}))(まで|に|の)?/, '').trim() || taskTitle;
+
       const task = await this.prisma.task.create({
         data: {
           userId,
-          title: taskTitle,
+          title: cleanedTitle,
+          dueDate: dueDate,
           status: 'pending',
-          priority: 1, // デフォルトで中
+          priority: 1,
         },
       });
-      this.logger.log(`タスクを抽出しました: ${task.title} (User: ${userId})`);
+      this.logger.log(`タスクを抽出しました: ${task.title} (期限: ${dueDate ? dueDate.toLocaleDateString('ja-JP') : 'なし'})`);
       return task;
     }
 
     return null;
+  }
+
+  /**
+   * タスクの統計情報を取得する
+   */
+  async getTaskStats(userId: string) {
+    const totalTasks = await this.prisma.task.count({ where: { userId } });
+    const completedTasks = await this.prisma.task.count({ where: { userId, status: 'completed' } });
+    const pendingTasks = await this.prisma.task.count({ where: { userId, status: 'pending' } });
+
+    return {
+      total: totalTasks,
+      completed: completedTasks,
+      pending: pendingTasks,
+      completionRate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
+    };
   }
 
   /**
@@ -50,15 +72,36 @@ export class TaskService {
    */
   private parseDueDate(text: string): Date | null {
     const now = new Date();
-    if (text.includes('明日')) {
+
+    // 「今日」
+    if (/今日/.test(text)) {
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      return today;
+    }
+
+    // 「明日」
+    if (/明日/.test(text)) {
       const tomorrow = new Date();
       tomorrow.setDate(now.getDate() + 1);
+      tomorrow.setHours(23, 59, 59, 999);
       return tomorrow;
     }
-    if (text.includes('今日')) {
-      return now;
+
+    // 「MM/DD」または「M/D」形式
+    const dateMatch = text.match(/(\d{1,2})[\/\-](\d{1,2})/);
+    if (dateMatch) {
+      const month = parseInt(dateMatch[1]) - 1;
+      const day = parseInt(dateMatch[2]);
+      const targetDate = new Date(now.getFullYear(), month, day, 23, 59, 59, 999);
+
+      // すでに過ぎている日付なら来年に設定
+      if (targetDate < now) {
+        targetDate.setFullYear(now.getFullYear() + 1);
+      }
+      return targetDate;
     }
-    // TODO: 正則表現による日付抽出の強化
+
     return null;
   }
 }

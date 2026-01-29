@@ -70,14 +70,12 @@ NestJSを使用したLINE Bot WebhookアプリケーションをVercelにデプ�
 
 ---
 
-### Phase 5: タスク管理機能の強化
+### Phase 5: タスク管理機能の強化（Next Step）
 
-#### [DONE] Task Service
+#### [NEW] Task Service
 
-- [x] TaskServiceとTaskModuleの作成
-- [x] LineServiceへのTaskService統合
-- [x] キーワードベースのタスク自動抽出ロジックの実装
-- [ ] 自然言語処理を用いた期限の解析
+- メッセージ内容からのタスク自動抽出ロジックの実装
+- 自然言語処理を用いた期限（dueDate）の解析
 
 ---
 

@@ -139,7 +139,19 @@ export class LineService {
           text: `【利用可能なコマンド】\n\n` +
             `/help - このヘルプを表示\n` +
             `/tasks - タスク一覧を表示\n` +
+            `/stats - タスク統計を表示\n` +
             `/settings - 設定メニューを表示`,
+        };
+
+      case '/stats':
+        const stats = await this.taskService.getTaskStats(user.id);
+        return {
+          type: 'text',
+          text: `【タスク統計】\n\n` +
+            `全タスク: ${stats.total}\n` +
+            `完了済み: ${stats.completed}\n` +
+            `未完了: ${stats.pending}\n` +
+            `完了率: ${stats.completionRate.toFixed(1)}%`,
         };
 
       case '/tasks':
