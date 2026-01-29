@@ -46,28 +46,53 @@ export class LineService {
    */
   private async handleMessageEvent(event: any) {
     const { replyToken, source, message } = event;
-    const userId = source.userId;
+    // 優先順位: userId > groupId > roomId
+    const lineId = source.userId || source.groupId || source.roomId;
+
+    if (!lineId) {
+      console.error('送信元IDが不明です:', event);
+      return;
+    }
 
     // ユーザーを取得または作成
     let user = await this.prisma.user.findUnique({
-      where: { lineUserId: userId },
+      where: { lineUserId: lineId },
     });
 
     if (!user) {
-      // 新規ユーザーの場合、プロフィール情報を取得して登録
+      // 新規ユーザーの場合、プロフィール情報の取得を試みる
+      let displayName = 'Unknown User';
+      let pictureUrl = null;
+
       try {
-        const profile = await this.client.getProfile(userId);
+        // userIdがある場合のみプロフィール取得可能
+        if (source.userId) {
+          const profile = await this.client.getProfile(source.userId);
+          displayName = profile.displayName;
+          pictureUrl = profile.pictureUrl;
+        } else if (source.groupId) {
+          displayName = `Group (${source.groupId.substring(0, 8)})`;
+        } else if (source.roomId) {
+          displayName = `Room (${source.roomId.substring(0, 8)})`;
+        }
+
         user = await this.prisma.user.create({
           data: {
-            lineUserId: userId,
-            displayName: profile.displayName,
-            pictureUrl: profile.pictureUrl,
+            lineUserId: lineId,
+            displayName: displayName,
+            pictureUrl: pictureUrl,
           },
         });
-        console.log('新規ユーザーを登録しました:', user.displayName);
+        console.log('新規ユーザー/グループを登録しました:', user.displayName);
       } catch (error) {
-        console.error('ユーザー登録エラー:', error);
-        return;
+        console.error('ユーザー登録エラー（フォールバック実行）:', error);
+        // プロフィール取得に失敗してもIDだけで登録を強行
+        user = await this.prisma.user.create({
+          data: {
+            lineUserId: lineId,
+            displayName: displayName,
+          },
+        });
       }
     }
 
