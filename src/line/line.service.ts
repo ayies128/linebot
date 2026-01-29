@@ -133,29 +133,8 @@ export class LineService {
           type: 'text',
           text: `【利用可能なコマンド】\n\n` +
             `/help - このヘルプを表示\n` +
-            `/today - 今日の予定を表示\n` +
-            `/tomorrow - 明日の予定を表示\n` +
-            `/week - 今週の予定を表示\n` +
             `/tasks - タスク一覧を表示\n` +
             `/settings - 設定メニューを表示`,
-        };
-
-      case '/today':
-        return {
-          type: 'text',
-          text: '今日の予定を取得中...\n（Google Calendar連携は実装中です）',
-        };
-
-      case '/tomorrow':
-        return {
-          type: 'text',
-          text: '明日の予定を取得中...\n（Google Calendar連携は実装中です）',
-        };
-
-      case '/week':
-        return {
-          type: 'text',
-          text: '今週の予定を取得中...\n（Google Calendar連携は実装中です）',
         };
 
       case '/tasks':
@@ -187,7 +166,6 @@ export class LineService {
           type: 'text',
           text: `【現在の設定】\n\n` +
             `タイムゾーン: ${user.timezone}\n` +
-            `リマインダー: イベント${user.reminderMinutes}分前\n\n` +
             `設定変更機能は実装中です`,
         };
 
@@ -221,9 +199,10 @@ export class LineService {
       const welcomeMessage: TextMessage = {
         type: 'text',
         text: `${profile.displayName}さん、友だち追加ありがとうございます！\n\n` +
-          `このBotは、LINEとGoogle Calendarを連携して、タスク管理とスケジュール管理をサポートします。\n\n` +
+          `このBotは、LINEでの会話履歴を保存し、タスク管理をサポートします。\n\n` +
           `/help でコマンド一覧を確認できます。`,
       };
+
 
       await this.client.replyMessage(event.replyToken, welcomeMessage);
       console.log('新規フォロー:', profile.displayName);

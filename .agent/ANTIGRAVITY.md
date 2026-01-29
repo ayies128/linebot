@@ -12,19 +12,19 @@
 
 ## プロジェクト概要
 
-LINE BotとGoogle Calendarを統合したタスク管理・スケジュール管理システムの開発。
+LINE Botによるタスク管理システムの開発。
 
 ### 技術スタック
 
 - **フレームワーク**: NestJS (TypeScript)
 - **デプロイ先**: Vercel
 - **データベース**: Supabase (PostgreSQL)
-- **主要API**: LINE Messaging API, Google Calendar API
+- **主要API**: LINE Messaging API
 
 ### アーキテクチャ
 
-```
-[LINE Platform] ←→ [Vercel (NestJS Webhook)] ←→ [Google Calendar API]
+```mermaid
+[LINE Platform] ←→ [Vercel (NestJS Webhook)]
                               ↓
                     [Supabase (PostgreSQL)]
 ```
@@ -92,7 +92,6 @@ git diff --cached
 # - LINE_CHANNEL_SECRET
 # - SUPABASE_SERVICE_ROLE_KEY
 # - DATABASE_URL（パスワード含む）
-# - GOOGLE_CLIENT_SECRET
 # - その他のAPIキーやトークン
 ```
 
@@ -100,7 +99,7 @@ git diff --cached
 
 `.gitignore`に以下が含まれていることを確認:
 
-```
+```text
 .env
 .env.local
 .env.*.local
@@ -172,7 +171,7 @@ chmod +x .git/hooks/pre-commit
 
 ## ディレクトリ構造
 
-```
+```text
 linebot/
 ├── .agent/                    # AI設定ファイル
 │   └── ANTIGRAVITY.md
@@ -185,7 +184,6 @@ linebot/
 │   ├── common/               # 共通モジュール
 │   ├── database/             # データベース接続
 │   ├── line/                 # LINE連携
-│   ├── calendar/             # Google Calendar連携
 │   ├── task/                 # タスク管理
 │   └── scheduler/            # スケジューラー
 ├── test/                     # テストファイル
@@ -207,7 +205,6 @@ linebot/
 ## 注意事項
 
 - LINE Messaging APIの無料プランの制限に注意
-- Google Calendar APIのクォータ制限に注意
 - Vercelのサーバーレス関数の実行時間制限（10秒）に注意
 - Supabaseの無料プランの制限に注意
 
@@ -215,6 +212,5 @@ linebot/
 
 - [NestJS Documentation](https://docs.nestjs.com/)
 - [LINE Messaging API](https://developers.line.biz/ja/docs/messaging-api/)
-- [Google Calendar API](https://developers.google.com/calendar/api/guides/overview)
 - [Supabase Documentation](https://supabase.com/docs)
 - [Vercel Documentation](https://vercel.com/docs)

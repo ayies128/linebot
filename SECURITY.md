@@ -10,7 +10,6 @@
 - `LINE_CHANNEL_SECRET` - LINEチャネルシークレット
 - `SUPABASE_SERVICE_ROLE_KEY` - Supabaseサービスロールキー
 - `DATABASE_URL` - データベース接続文字列（パスワード含む）
-- `GOOGLE_CLIENT_SECRET` - Google OAuth クライアントシークレット
 - その他のAPIキー、トークン、パスワード
 
 ---
@@ -41,7 +40,7 @@ git check-ignore -v .env
 
 **期待される出力:**
 
-```
+```text
 .gitignore:5:.env       .env
 ```
 
@@ -82,7 +81,6 @@ git diff --cached
 - `LINE_CHANNEL_SECRET=xxxxx`
 - `SUPABASE_SERVICE_ROLE_KEY=xxxxx`
 - `DATABASE_URL=postgresql://postgres:PASSWORD@...`
-- `GOOGLE_CLIENT_SECRET=xxxxx`
 
 ---
 

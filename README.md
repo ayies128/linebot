@@ -1,18 +1,17 @@
-# LINE Bot & Google Calendar 統合システム
+# LINE Bot システム
 
-NestJSを使用したLINE BotとGoogle Calendarを統合したタスク管理・スケジュール管理システムです。
+NestJSを使用したLINE会話履歴の保存とタスク管理システムです。
 
 ## 概要
 
-このシステムは、LINE Messaging APIを通じてメッセージを受信し、Google Calendar APIと連携してタスクやスケジュールを管理します。
+このシステムは、LINE Messaging APIを通じてメッセージを受信し、会話内容の保存やタスク管理のサポートを行います。
 
 ### 主な機能
 
 - ✅ LINE Webhookによるメッセージ受信
-- ✅ Google Calendarとの双方向連携
-- ✅ 会話からのタスク自動抽出
-- ✅ カレンダーイベントのリマインダー送信
-- ✅ 日次・週次サマリーの自動送信
+- ✅ 会話履歴のデータベース保存
+- ✅ 会話からのタスク抽出
+- ✅ ユーザー管理
 
 ## 技術スタック
 
@@ -20,14 +19,14 @@ NestJSを使用したLINE BotとGoogle Calendarを統合したタスク管理・
 - **データベース**: Supabase (PostgreSQL)
 - **ホスティング**: Vercel
 - **ORM**: Prisma
-- **主要API**: LINE Messaging API, Google Calendar API
+- **主要API**: LINE Messaging API
 
 ## アーキテクチャ
 
-```
-[LINE Platform] ←→ [Vercel (NestJS)] ←→ [Google Calendar API]
-                          ↓
-                [Supabase (PostgreSQL)]
+```mermaid
+graph LR
+    LINE[LINE Platform] <--> Vercel[Vercel (NestJS)]
+    Vercel --> Supabase[Supabase (PostgreSQL)]
 ```
 
 ## セットアップ
@@ -37,7 +36,6 @@ NestJSを使用したLINE BotとGoogle Calendarを統合したタスク管理・
 - Node.js 18以上
 - npm または yarn
 - LINE Developersアカウント
-- Google Cloud Platformアカウント
 - Supabaseアカウント
 - Vercelアカウント
 
@@ -66,7 +64,6 @@ cp .env.example .env
 
 - **LINE Messaging API**: [LINE Developers Console](https://developers.line.biz/console/)から取得
 - **Supabase**: [Supabase Dashboard](https://app.supabase.com/)から取得
-- **Google Calendar API**: [Google Cloud Console](https://console.cloud.google.com/)から取得
 
 ### 4. Prismaのセットアップ
 
@@ -75,6 +72,7 @@ cp .env.example .env
 npx prisma generate
 
 # データベースマイグレーション
+# DATABASE_URLが必要です
 npx prisma migrate dev --name init
 ```
 
@@ -87,14 +85,11 @@ npm run start:dev
 ### 6. ngrokでWebhookを公開（ローカル開発時）
 
 ```bash
-# ngrokのインストール
-npm install -g ngrok
-
-# ポート3000を公開
+# ngrokでポート3000を公開
 ngrok http 3000
 ```
 
-表示されたHTTPS URLをLINE Developers ConsoleのWebhook URLに設定してください。
+表示されたHTTPS URLをLINE Developers ConsoleのWebhook URLに設定してください（例: `https://xxxx.ngrok-free.app/webhook`）。
 
 ## デプロイ
 
@@ -120,13 +115,10 @@ Vercelダッシュボードで以下の環境変数を設定してください�
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `DATABASE_URL`
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REDIRECT_URI`
 
 ## プロジェクト構造
 
-```
+```text
 linebot/
 ├── .agent/                    # AI設定ファイル
 ├── prisma/                    # Prismaスキーマ
@@ -138,7 +130,6 @@ linebot/
 │   ├── common/               # 共通モジュール
 │   ├── database/             # データベース接続
 │   ├── line/                 # LINE連携
-│   ├── calendar/             # Google Calendar連携
 │   ├── task/                 # タスク管理
 │   └── scheduler/            # スケジューラー
 ├── test/                     # テストファイル
@@ -154,13 +145,8 @@ linebot/
 
 ### LINE Botコマンド
 
-- `/today` - 今日の予定を表示
-- `/tomorrow` - 明日の予定を表示
-- `/week` - 今週の予定を表示
-- `/add [イベント内容]` - イベントを追加
 - `/tasks` - タスク一覧を表示
-- `/connect` - Google Calendarと連携
-- `/settings` - 設定メニューを表示
+- `/settings` - 設定を表示
 - `/help` - ヘルプメッセージを表示
 
 ## テスト
@@ -171,16 +157,14 @@ npm run test
 
 # E2Eテスト
 npm run test:e2e
-
-# テストカバレッジ
-npm run test:cov
 ```
 
 ## ドキュメント
 
 - [要件仕様書](./REQUIREMENTS.md)
-- [実装計画](/.gemini/antigravity/brain/e141393a-c36e-46d7-93dd-cc58b17ce50a/implementation_plan.md)
+- [実装計画](./implementation_plan.md)
 - [開発ガイドライン](./.agent/ANTIGRAVITY.md)
+- [セキュリティガイドライン](./SECURITY.md)
 
 ## ライセンス
 
@@ -190,6 +174,5 @@ MIT
 
 - [NestJS Documentation](https://docs.nestjs.com/)
 - [LINE Messaging API](https://developers.line.biz/ja/docs/messaging-api/)
-- [Google Calendar API](https://developers.google.com/calendar/api/guides/overview)
 - [Supabase Documentation](https://supabase.com/docs)
 - [Vercel Documentation](https://vercel.com/docs)
